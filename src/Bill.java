@@ -246,10 +246,13 @@ public class Bill {
 
 
 
-    public void printBill() {
+    public void printBill(String employeeName) {
         System.out.println("=====================================");
         System.out.println("               BILL                  ");
         System.out.println("=====================================");
+
+        // Display the employee who billed the transaction
+        System.out.printf("Billed By: %-20s%n", employeeName);
 
         // Print the items
         for (BillItem billItem : items) {
@@ -270,6 +273,7 @@ public class Bill {
 
         System.out.println("=====================================");
     }
+
 
     class BillItem{
         private Items item;

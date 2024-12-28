@@ -10,47 +10,88 @@ public class Main {
 
     // can we define it here
     static Connection connection = Database.connect();
+    static String employeeName;
 
     public static void main(String[] args) {
 
         Scanner scanner = new Scanner(System.in);
 
 
-        System.out.println("Welcome to the POS system!");
+        System.out.println("Welcome to the Synex POS System!");
+        System.out.print("Please enter your Employee ID : ");
 
-        while (true) {
-            System.out.println("\n1. Bill Customer");
-            System.out.println("2. View Bills");
-            System.out.println("3. Manege Products");
-            System.out.println("4. Category management");
-            System.out.println("5. Daily sales report");
-            System.out.println("6. Stock Report");
-            System.out.println("7. Restock Report");
-            System.out.println("8. Reshelve Report");
-            System.out.println("9. Stock Management");
-            System.out.println("10. Exit");
-            System.out.print("Enter your choice: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+        int employeeId = scanner.nextInt();
 
-            switch (choice) {
-                case 1 : Main.BillCustomer(scanner);
-                         break;
-                case 3 : Main.itemManagement(scanner);
-                         break;
-                case 4 : Main.categoryManagement(scanner);
-                         break;
+        // Retrieve the employee's name
+        employeeName = getEmployeeName(employeeId);
 
-                case 9 : Main.stockManagement(scanner);
-                         break;
-                case 10 : {
-                    System.out.println("Thank you for using the POS system. Goodbye!");
-                    return;
-                }
-                default : System.out.println("Invalid choice. Please try again.");
-            }
+        if (employeeName != null) {
+            System.out.println("Access granted. Welcome, " + employeeName + " (Employee ID: " + employeeId + ")");
+            mainMenu(scanner); // Pass employee ID to the main menu
+        } else {
+            System.out.println("Access denied. Invalid Employee ID.");
+            System.out.println("Please try again.");
+
         }
+
+        scanner.close();
+
     }
+
+    public static String getEmployeeName(int employeeId) {
+        String employeeName = null;
+
+        String query = "SELECT name FROM employees WHERE employee_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, employeeId);
+
+            ResultSet resultSet = stmt.executeQuery();
+            if (resultSet.next()) {
+                employeeName = resultSet.getString("name"); // Retrieve employee's name
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return employeeName; // Returns null if no match is found
+    }
+
+
+     public static void mainMenu(Scanner scanner){
+         while (true) {
+             System.out.println("\n1. Bill Customer");
+             System.out.println("2. View Bills");
+             System.out.println("3. Manege Products");
+             System.out.println("4. Category management");
+             System.out.println("5. Daily sales report");
+             System.out.println("6. Stock Report");
+             System.out.println("7. Restock Report");
+             System.out.println("8. Reshelve Report");
+             System.out.println("9. Stock Management");
+             System.out.println("10. Exit");
+             System.out.print("Enter your choice: ");
+             int choice = scanner.nextInt();
+             scanner.nextLine();
+
+             switch (choice) {
+                 case 1 : Main.BillCustomer(scanner);
+                     break;
+                 case 3 : Main.itemManagement(scanner);
+                     break;
+                 case 4 : Main.categoryManagement(scanner);
+                     break;
+
+                 case 9 : Main.stockManagement(scanner);
+                     break;
+                 case 10 : {
+                     System.out.println("Thank you for using the POS system. Goodbye!");
+                     return;
+                 }
+                 default : System.out.println("Invalid choice. Please try again.");
+             }
+         }
+
+     }
 
 
     public static void BillCustomer(Scanner scanner){
@@ -83,7 +124,7 @@ public class Main {
         double cash_returned = bill.change_calculation(cash_tendered);
         System.out.println(cash_returned);
         bill.checkout(transaction_type);
-        bill.printBill();
+        bill.printBill(employeeName);
 
 
     }
