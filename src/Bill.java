@@ -179,7 +179,7 @@ public class Bill {
 
 
             //update stock level
-            String updatestockquary = "UPDATE item SET Stock_level = Stock_level - ? WHERE Item_id = ?";
+            String updatestockquary = "UPDATE shelf_items SET current_qty = current_qty - ? WHERE item_id = ?";
             updateStockStmt = connection.prepareStatement(updatestockquary);
 
 

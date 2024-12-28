@@ -1,9 +1,7 @@
 import JDBC.Database;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.util.Date;
 import java.util.Scanner;
 
 public class Main {
@@ -68,7 +66,10 @@ public class Main {
              System.out.println("7. Restock Report");
              System.out.println("8. Reshelve Report");
              System.out.println("9. Stock Management");
-             System.out.println("10. Exit");
+             System.out.println("10. Reshelve");
+             System.out.println("11. Reorder Report");
+             System.out.println("12. Bill Report");
+             System.out.println("13. Exit");
              System.out.print("Enter your choice: ");
              int choice = scanner.nextInt();
              scanner.nextLine();
@@ -81,9 +82,30 @@ public class Main {
                  case 4 : Main.categoryManagement(scanner);
                      break;
 
+                 case 5 : Main.DailySalesReport(scanner);
+                          break;
+
+                 case 6 : Main.StockReport();
+                          break;
+
+                 case 7 : Main.StockReport();
+                 break;
+
+                 case 8 : Main.ReshelvingReport();
+                 break;
+
                  case 9 : Main.stockManagement(scanner);
                      break;
-                 case 10 : {
+
+                 case 10 : Main.reshelve();
+                 break;
+
+                 case 11 : Main.ReorderReport();
+                 break;
+
+                 case 12 : Main.BillReport();
+                 break;
+                 case 13 : {
                      System.out.println("Thank you for using the POS system. Goodbye!");
                      return;
                  }
@@ -93,11 +115,65 @@ public class Main {
 
      }
 
+     // Loyalty System
+//     public static void loyaltySystem(Scanner scanner){
+//         System.out.println("Enter your Loyalty Number (or press Enter to skip): ");
+//         String loyalty_number = scanner.nextLine();
+//
+//         if (loyalty_number.isEmpty()) {
+//            Main.BillCustomer(scanner);
+//         }
+//
+//
+//         try {
+//             int loyaltyNumber = Integer.parseInt(loyalty_number);
+//
+//             // Query to check if the loyalty number exists
+//             String query = "SELECT l.loyalty_id, c.name, l.total_points_earned, l.current_points_balance " +
+//                     "FROM Loyalty l " +
+//                     "JOIN Customer c ON l.customer_id = c.customer_id " +
+//                     "WHERE l.loyalty_id = ?";
+//
+//             try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+//                 preparedStatement.setInt(1, loyaltyNumber);
+//                 ResultSet resultSet = preparedStatement.executeQuery();
+//
+//                 if (resultSet.next()) {
+//                     // Fetching loyalty details
+//                     int loyaltyId = resultSet.getInt("loyalty_id");
+//                     String customerName = resultSet.getString("name");
+//                     int totalPoints = resultSet.getInt("total_points_earned");
+//                     int currentPoints = resultSet.getInt("current_points_balance");
+//
+//                     System.out.println("Loyalty Number Verified Successfully!");
+//                     System.out.println("Customer Name: " + customerName);
+//                     System.out.println("Total Points Earned: " + totalPoints);
+//                     System.out.println("Current Points Balance: " + currentPoints);
+//
+//                     // Proceed with the next operation (e.g., main menu or loyalty actions)
+//                     mainMenu(scanner, loyaltyId, connection);
+//
+//                 } else {
+//                     System.out.println("Invalid Loyalty Number. Please try again.");
+//                     verifyLoyaltyNumber(scanner, connection); // Retry
+//                 }
+//             }
+//         } catch (NumberFormatException e) {
+//             System.out.println("Invalid input. Please enter a valid loyalty number or press Enter to skip.");
+//             verifyLoyaltyNumber(scanner, connection); // Retry
+//         } catch (SQLException e) {
+//             System.err.println("Error verifying loyalty number: " + e.getMessage());
+//         }
+//     }
+
+
 
     public static void BillCustomer(Scanner scanner){
 
         String transaction_type = "POS";
         Bill bill = new Bill();
+
+
 
         while(true) {
             System.out.println("Enter item code: ");
@@ -579,6 +655,13 @@ public class Main {
             String addstockQuary = "INSERT INTO stock (Batch_number, item_id, qty, qty_type, batch_price, date_of_purchase, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
             PreparedStatement stmt = connection.prepareStatement(addstockQuary);
 
+            String adjestItemQuary =  """
+                        UPDATE item 
+                        SET Stock_level = Stock_level + ? 
+                        WHERE item_id = ?
+                       """;
+            PreparedStatement Itemstmt = connection.prepareStatement(adjestItemQuary);
+
             stmt.setString(1, batchNumber);
             stmt.setInt(2, item_id);
             stmt.setInt(3, quantity);
@@ -587,6 +670,10 @@ public class Main {
             stmt.setString(6, date_of_purchase);
             stmt.setString(7, expirationDate);
 
+            Itemstmt.setInt(1, quantity);
+            Itemstmt.setInt(2, item_id);
+
+            Itemstmt.executeUpdate();
             int rowsInserted = stmt.executeUpdate();
 
             if (rowsInserted > 0) {
@@ -772,4 +859,345 @@ public class Main {
         }
         return -1; // Return -1 if category not found
     }
+
+
+    // Report generation
+
+    public static void DailySalesReport(Scanner scanner){
+        System.out.println("Enter the date for the daily sales report (YYYY-MM-DD): ");
+        String date = scanner.nextLine();
+
+        String query = """
+               
+                  SELECT i.code, i.name, SUM(bi.quantity) as total_quantity,\s
+                   SUM(bi.price) as total_revenue
+                   FROM bill b
+                   JOIN bill_item bi ON b.Serial_number = bi.bill_id
+                   JOIN item i ON bi.item_id = i.item_id
+                   WHERE DATE(b.Date) = ?
+                   GROUP BY i.item_id, i.code, i.name
+                  
+                """;
+
+        String totalRevenueQuery = """
+               SELECT 
+                    SUM(Total) AS total_revenue
+               FROM 
+                    bill 
+                WHERE 
+                    Date = ?;
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(query);
+             PreparedStatement totalStatement = connection.prepareStatement(totalRevenueQuery)) {
+
+            // Set the date parameter for both queries
+            statement.setString(1, date);
+            totalStatement.setString(1, date);
+
+            // Execute the main query for items
+            ResultSet resultSet = statement.executeQuery();
+
+            System.out.println("Sales Report for Date: " + date);
+            System.out.println("------------------------------------------------------------");
+            System.out.printf("%-15s %-25s %-10s %-15s\n", "Item Code", "Item Name", "Quantity", "Revenue");
+            System.out.println("------------------------------------------------------------");
+
+            while (resultSet.next()) {
+                String itemCode = resultSet.getString("Code");
+                String itemName = resultSet.getString("name");
+                int totalQuantity = resultSet.getInt("total_quantity");
+                double totalRevenue = resultSet.getDouble("total_revenue");
+
+                System.out.printf("%-15s %-25s %-10d %-15.2f\n", itemCode, itemName, totalQuantity, totalRevenue);
+            }
+
+            // Execute the total revenue query
+            ResultSet totalResultSet = totalStatement.executeQuery();
+            if (totalResultSet.next()) {
+                double totalRevenue = totalResultSet.getDouble("total_revenue");
+                System.out.println("------------------------------------------------------------");
+                System.out.println("Total Revenue for Date " + date + ": " + totalRevenue);
+            }
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
+        }
+
+
+    }
+
+    public static void ReorderReport() {
+        String query = """
+                SELECT 
+                    i.code AS item_code,
+                    i.name AS item_name,
+                    s.qty AS current_stock
+                FROM 
+                    stock s
+                JOIN 
+                    item i ON s.item_id = i.item_id
+                WHERE 
+                    s.qty < 50;
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            ResultSet resultSet = statement.executeQuery();
+
+            System.out.println("Reorder Level Report");
+            System.out.println("------------------------------------------------");
+            System.out.printf("%-15s %-25s %-10s\n", "Item Code", "Item Name", "Current Stock");
+            System.out.println("------------------------------------------------");
+
+            while (resultSet.next()) {
+                String itemCode = resultSet.getString("item_code");
+                String itemName = resultSet.getString("item_name");
+                int currentStock = resultSet.getInt("current_stock");
+
+                System.out.printf("%-15s %-25s %-10d\n", itemCode, itemName, currentStock);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
+        }
+    }
+
+    public static void StockReport() {
+        String query = """
+                SELECT 
+                    s.Batch_number AS batch_number,
+                    i.code AS item_code,
+                    i.name AS item_name,
+                    s.qty AS quantity,
+                    s.qty_type AS quantity_type,
+                    s.batch_price AS batch_price,
+                    s.date_of_purchase AS purchase_date,
+                    s.expiry_date AS expiry_date
+                FROM 
+                    stock s
+                JOIN 
+                    item i ON s.item_id = i.item_id;
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            ResultSet resultSet = statement.executeQuery();
+
+            System.out.println("Stock Report (Batch-wise)");
+            System.out.println("------------------------------------------------------------------------------------------");
+            System.out.printf("%-15s %-15s %-25s %-10s %-10s %-15s %-15s %-15s\n",
+                    "Batch No", "Item Code", "Item Name", "Qty", "Qty Type", "Batch Price", "Purchase Date", "Expiry Date");
+            System.out.println("------------------------------------------------------------------------------------------");
+
+            while (resultSet.next()) {
+                String batchNumber = resultSet.getString("batch_number");
+                String itemCode = resultSet.getString("item_code");
+                String itemName = resultSet.getString("item_name");
+                int quantity = resultSet.getInt("quantity");
+                String quantityType = resultSet.getString("quantity_type");
+                double batchPrice = resultSet.getDouble("batch_price");
+                String purchaseDate = resultSet.getString("purchase_date");
+                String expiryDate = resultSet.getString("expiry_date");
+
+                System.out.printf("%-15s %-15s %-25s %-10d %-10s %-15.2f %-15s %-15s\n",
+                        batchNumber, itemCode, itemName, quantity, quantityType, batchPrice, purchaseDate, expiryDate);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
+        }
+    }
+
+    public static void BillReport() {
+        String query = """
+                SELECT 
+                    b.Serial_number AS bill_number,
+                    b.Date AS bill_date,
+                    bi.item_id AS item_code,
+                    i.name AS item_name,
+                    bi.quantity AS quantity,
+                    bi.price AS total_price,
+                    b.Total AS total_bill_amount
+                FROM 
+                    bill b
+                JOIN 
+                    bill_item bi ON b.Serial_number = bi.bill_id
+                JOIN 
+                    item i ON bi.item_id = i.item_id
+                ORDER BY 
+                    b.Date DESC, b.Serial_number ASC;
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            ResultSet resultSet = statement.executeQuery();
+
+            System.out.println("Bill Report (Customer Transactions)");
+            System.out.println("---------------------------------------------------------------------------------------------");
+            System.out.printf("%-10s %-15s %-10s %-20s %-10s %-15s %-15s\n",
+                    "Bill No", "Bill Date", "Item Code", "Item Name", "Qty", "Total (Item)", "Total (Bill)");
+            System.out.println("---------------------------------------------------------------------------------------------");
+
+            while (resultSet.next()) {
+                int billNumber = resultSet.getInt("bill_number");
+                String billDate = resultSet.getString("bill_date");
+                String itemCode = resultSet.getString("item_code");
+                String itemName = resultSet.getString("item_name");
+                int quantity = resultSet.getInt("quantity");
+                double totalPrice = resultSet.getDouble("total_price");
+                double totalBillAmount = resultSet.getDouble("total_bill_amount");
+
+                System.out.printf("%-10d %-15s %-10s %-20s %-10d %-15.2f %-15.2f\n",
+                        billNumber, billDate, itemCode, itemName, quantity, totalPrice, totalBillAmount);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
+        }
+    }
+
+    public static void ReshelvingReport() {
+        String query = """
+        SELECT 
+            i.Code AS ItemCode,
+            i.Name AS ItemName,
+            si.shelf_id AS ShelfID,
+            (si.max_qty - si.current_qty) AS QuantityToReshelve
+        FROM 
+            shelf_items si
+        JOIN 
+            item i ON si.item_id = i.item_id
+        WHERE 
+            (si.max_qty - si.current_qty) > 0
+        ORDER BY 
+            si.shelf_id, i.Name;
+    """;
+
+        try (PreparedStatement statement = connection.prepareStatement(query);
+             ResultSet resultSet = statement.executeQuery()) {
+
+            System.out.println("Reshelving Report:");
+            System.out.println("----------------------------------------------------------------------");
+            System.out.println("| Item Code | Item Name                 | Shelf ID | Reshelve Qty  |");
+            System.out.println("----------------------------------------------------------------------");
+
+            while (resultSet.next()) {
+                String itemCode = resultSet.getString("ItemCode");
+                String itemName = resultSet.getString("ItemName");
+                int shelfId = resultSet.getInt("ShelfID");
+                int toReshelve = resultSet.getInt("QuantityToReshelve");
+
+                System.out.printf("| %-9s | %-25s | %-8d | %-10d |%n", itemCode, itemName, shelfId, toReshelve);
+            }
+
+            System.out.println("------------------------------------------------------------");
+
+        } catch (SQLException e) {
+            System.err.println("Error generating reshelving report: " + e.getMessage());
+        }
+    }
+
+
+    public static void reshelve() {
+        String fetchShelvesQuery = """
+        SELECT shelf_id, item_id, max_qty - current_qty AS qty_to_reshelve
+        FROM shelf_items
+        WHERE current_qty < max_qty
+    """;
+
+        String fetchStockBatchQuery = """
+        SELECT Batch_number, qty, expiry_date
+        FROM Stock
+        WHERE item_id = ? AND qty > 0
+        ORDER BY expiry_date ASC, Batch_number ASC
+        LIMIT 1
+    """;
+
+        String updateShelfQuery = """
+        UPDATE shelf_items 
+        SET current_qty = current_qty + ? 
+        WHERE shelf_id = ?
+    """;
+
+        String updateStockQuery = """
+        UPDATE Stock 
+        SET qty = qty - ? 
+        WHERE Batch_number = ?
+    """;
+
+        String updateItemQuery = """
+        UPDATE item
+        SET Stock_level = Stock_level - ? 
+        WHERE item_id = ?
+    """;
+
+        try (Statement shelfStmt = connection.createStatement();
+             ResultSet shelves = shelfStmt.executeQuery(fetchShelvesQuery)) {
+
+            connection.setAutoCommit(false); // Begin transaction
+
+            while (shelves.next()) {
+                int shelfId = shelves.getInt("shelf_id");
+                String itemCode = shelves.getString("item_id");
+                int qtyToReshelve = shelves.getInt("qty_to_reshelve");
+
+                if (qtyToReshelve <= 0) {
+                    continue; // Skip shelves that do not need reshelving
+                }
+
+                try (PreparedStatement stockStmt = connection.prepareStatement(fetchStockBatchQuery)) {
+                    stockStmt.setString(1, itemCode);
+
+                    try (ResultSet stockBatch = stockStmt.executeQuery()) {
+                        if (stockBatch.next()) {
+                            String batchId = stockBatch.getString("Batch_number");
+                            int availableQuantity = stockBatch.getInt("qty");
+                            Date expiryDate = stockBatch.getDate("expiry_date");
+
+                            int qtyReshelved = Math.min(qtyToReshelve, availableQuantity);
+
+                            // Update the shelf
+                            try (PreparedStatement updateShelfStmt = connection.prepareStatement(updateShelfQuery)) {
+                                updateShelfStmt.setInt(1, qtyReshelved);
+                                updateShelfStmt.setInt(2, shelfId);
+                                updateShelfStmt.executeUpdate();
+                            }
+
+
+                            // Update the stock
+                            try (PreparedStatement updateStockStmt = connection.prepareStatement(updateStockQuery)) {
+                                updateStockStmt.setInt(1, qtyReshelved);
+                                updateStockStmt.setString(2, batchId);
+                                updateStockStmt.executeUpdate();
+                            }
+
+                            try (PreparedStatement updateItemStmt = connection.prepareStatement(updateItemQuery)) {
+                                updateItemStmt.setInt(1, qtyReshelved);
+                                updateItemStmt.setString(2, itemCode);
+                                updateItemStmt.executeUpdate();
+                            }
+
+                            System.out.printf("Reshelved %d units of item %s from batch %s (Expiry: %s) to shelf %d.%n",
+                                    qtyReshelved, itemCode, batchId, expiryDate != null ? expiryDate.toString() : "N/A", shelfId);
+                        } else {
+                            System.out.printf("No stock available to reshelve item %s on shelf %d.%n", itemCode, shelfId);
+                        }
+                    }
+                }
+            }
+
+            connection.commit(); // Commit transaction
+        } catch (SQLException e) {
+            System.err.println("Error during reshelving: " + e.getMessage());
+            try {
+                connection.rollback(); // Rollback on error
+            } catch (SQLException rollbackEx) {
+                System.err.println("Rollback failed: " + rollbackEx.getMessage());
+            }
+        } finally {
+            try {
+                connection.setAutoCommit(true); // Reset auto-commit
+            } catch (SQLException e) {
+                System.err.println("Failed to reset auto-commit: " + e.getMessage());
+            }
+        }
+    }
+
 }
