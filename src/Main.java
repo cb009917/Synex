@@ -9,6 +9,7 @@ public class Main {
     // can we define it here
     static Connection connection = Database.connect();
     static String employeeName;
+    static int loyaltyNumber;
 
     public static void main(String[] args) {
 
@@ -75,7 +76,7 @@ public class Main {
              scanner.nextLine();
 
              switch (choice) {
-                 case 1 : Main.BillCustomer(scanner);
+                 case 1 : Main.loyaltySystem(scanner);
                      break;
                  case 3 : Main.itemManagement(scanner);
                      break;
@@ -116,55 +117,55 @@ public class Main {
      }
 
      // Loyalty System
-//     public static void loyaltySystem(Scanner scanner){
-//         System.out.println("Enter your Loyalty Number (or press Enter to skip): ");
-//         String loyalty_number = scanner.nextLine();
-//
-//         if (loyalty_number.isEmpty()) {
-//            Main.BillCustomer(scanner);
-//         }
-//
-//
-//         try {
-//             int loyaltyNumber = Integer.parseInt(loyalty_number);
-//
-//             // Query to check if the loyalty number exists
-//             String query = "SELECT l.loyalty_id, c.name, l.total_points_earned, l.current_points_balance " +
-//                     "FROM Loyalty l " +
-//                     "JOIN Customer c ON l.customer_id = c.customer_id " +
-//                     "WHERE l.loyalty_id = ?";
-//
-//             try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-//                 preparedStatement.setInt(1, loyaltyNumber);
-//                 ResultSet resultSet = preparedStatement.executeQuery();
-//
-//                 if (resultSet.next()) {
-//                     // Fetching loyalty details
-//                     int loyaltyId = resultSet.getInt("loyalty_id");
-//                     String customerName = resultSet.getString("name");
-//                     int totalPoints = resultSet.getInt("total_points_earned");
-//                     int currentPoints = resultSet.getInt("current_points_balance");
-//
-//                     System.out.println("Loyalty Number Verified Successfully!");
-//                     System.out.println("Customer Name: " + customerName);
-//                     System.out.println("Total Points Earned: " + totalPoints);
-//                     System.out.println("Current Points Balance: " + currentPoints);
-//
-//                     // Proceed with the next operation (e.g., main menu or loyalty actions)
-//                     mainMenu(scanner, loyaltyId, connection);
-//
-//                 } else {
-//                     System.out.println("Invalid Loyalty Number. Please try again.");
-//                     verifyLoyaltyNumber(scanner, connection); // Retry
-//                 }
-//             }
-//         } catch (NumberFormatException e) {
-//             System.out.println("Invalid input. Please enter a valid loyalty number or press Enter to skip.");
-//             verifyLoyaltyNumber(scanner, connection); // Retry
-//         } catch (SQLException e) {
-//             System.err.println("Error verifying loyalty number: " + e.getMessage());
-//         }
-//     }
+     public static void loyaltySystem(Scanner scanner){
+         System.out.println("Enter your Loyalty Number (or press Enter to skip): ");
+         String loyalty_number = scanner.nextLine();
+
+         if (loyalty_number.isEmpty()) {
+            Main.BillCustomer(scanner);
+         }
+
+
+         try {
+             loyaltyNumber = Integer.parseInt(loyalty_number);
+
+             // Query to check if the loyalty number exists
+             String query = "SELECT l.loyalty_id, c.name, l.total_points " +
+                     "FROM loyalty l " +
+                     "JOIN customer c ON l.Customer_id = c.id " +
+                     "WHERE l.loyalty_id = ?";
+
+             try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+                 preparedStatement.setInt(1, loyaltyNumber);
+                 ResultSet resultSet = preparedStatement.executeQuery();
+
+                 if (resultSet.next()) {
+                     // Fetching loyalty details
+                     int loyaltyId = resultSet.getInt("loyalty_id");
+                     String customerName = resultSet.getString("name");
+                     int totalPoints = resultSet.getInt("total_points");
+
+
+                     System.out.println("Welcome " + customerName);
+
+
+                     // Proceed with the next operation (e.g., main menu or loyalty actions)
+                     BillCustomer(scanner);
+
+                 }
+
+                 else {
+                     System.out.println("Invalid Loyalty Number. Please try again.");
+                     loyaltySystem(scanner); // Retry
+                 }
+             }
+         } catch (NumberFormatException e) {
+             System.out.println("Invalid input. Please enter a valid loyalty number or press Enter to skip.");
+             loyaltySystem(scanner); // Retry
+         } catch (SQLException e) {
+             System.err.println("Error verifying loyalty number: " + e.getMessage());
+         }
+     }
 
 
 
@@ -172,8 +173,6 @@ public class Main {
 
         String transaction_type = "POS";
         Bill bill = new Bill();
-
-
 
         while(true) {
             System.out.println("Enter item code: ");
@@ -199,7 +198,7 @@ public class Main {
         double cash_tendered = scanner.nextDouble();
         double cash_returned = bill.change_calculation(cash_tendered);
         System.out.println(cash_returned);
-        bill.checkout(transaction_type);
+        bill.checkout(transaction_type, loyaltyNumber);
         bill.printBill(employeeName);
 
 

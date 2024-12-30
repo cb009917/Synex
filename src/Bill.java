@@ -11,14 +11,41 @@ public class Bill {
     private int SerialNumber = 0;
     private List<BillItem> items = new ArrayList<>();
     private double totalPrice;
+    double netTotal;
+    double discount;
     private double CashTendered;
     private double ChangeReturned;
+    private double loyaltyPoints;
     private String transactionType;
     private  String BillDate;
     Connection connection = Database.connect();
 
     public double getCashTendered() {
         return CashTendered;
+    }
+
+    public double getDiscount() {
+        return discount;
+    }
+
+    public void setDiscount(double discount) {
+        this.discount = discount;
+    }
+
+    public double getNetTotal() {
+        return netTotal;
+    }
+
+    public void setNetTotal(double netTotal) {
+        this.netTotal = netTotal;
+    }
+
+    public double getLoyaltyPoints() {
+        return loyaltyPoints;
+    }
+
+    public void setLoyaltyPoints(double loyaltyPoints) {
+        this.loyaltyPoints = loyaltyPoints;
     }
 
     public void setCashTendered(double cashTendered) {
@@ -87,7 +114,6 @@ public class Bill {
             System.out.println("No items in the order.");
             return;
         }
-
         double BillTotal = 0;
         System.out.println("Order Summary:");
         System.out.println("----------------------------------");
@@ -97,11 +123,16 @@ public class Bill {
             double item_total = billItem.item_price;
 
             System.out.printf("Item: %s | Quantity: %d | Total: %.2f%n", itemName, quantity, item_total);
-            totalPrice += item_total;
+            setTotalPrice(totalPrice += item_total);
         }
 
+        // discount calculation
+        discountCalculation();
+
         System.out.println("----------------------------------");
-        System.out.printf("Total Amount: %.2f%n", totalPrice);
+        System.out.printf("Total Amount: %.2f%n", getNetTotal());
+
+
     }
 
 //    public double calculate_bill_total(double totalPrice){
@@ -110,8 +141,10 @@ public class Bill {
 //    }
 
     public double change_calculation(double cash_given){
+
+
         this.CashTendered = cash_given;
-        ChangeReturned =  CashTendered - totalPrice;
+        ChangeReturned =  CashTendered - getNetTotal();
         return ChangeReturned;
     }
 
@@ -127,16 +160,57 @@ public class Bill {
 
     // Generating bill id
 
+    public void discountCalculation(){
+
+        PreparedStatement discountStmt = null;
+        double totalDiscount = 0.0;
+
+        // discount calculation
+        try{
+            for (BillItem billItem : items) {
+                // Query to get discount for the item
+                String discountQuery = "SELECT discount_percentage FROM discount " +
+                        "WHERE item_id = ? AND (start_date <= CURDATE() AND end_date >= CURDATE())";
+                discountStmt = connection.prepareStatement(discountQuery);
+                discountStmt.setInt(1, billItem.item.getId());
+                ResultSet discountResult = discountStmt.executeQuery();
+
+                double discountPercentage = 0.0;
+                if (discountResult.next()) {
+                    discountPercentage = discountResult.getDouble("discount_percentage");
+                }
+
+                // Calculate discounted price
+                double originalPrice = billItem.item_price;
+                double discountAmount = originalPrice * (discountPercentage / 100);
+                totalDiscount += discountAmount * billItem.quantity;
+                setDiscount(totalDiscount);
+
+//                billItem.item_price = discountedPrice; // Update the price with the discount
+//                netTotal += discountedPrice * billItem.quantity;
+            }
 
 
 
-    public boolean checkout(String transactionType) {
+            netTotal = getTotalPrice() - totalDiscount;
+            setNetTotal(netTotal);
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+    public boolean checkout(String transactionType ,int loyalty_id) {
 
         this.transactionType = transactionType;
 
         PreparedStatement billStmt = null;
         PreparedStatement billItemStmt = null;
         PreparedStatement updateStockStmt = null;
+        PreparedStatement loyaltyStmt = null;
+
 
         try {
          // Start transaction
@@ -167,10 +241,14 @@ public class Bill {
                 throw new SQLException("Failed to retrieve bill ID.");
             }
 
+
+
         }
         catch (SQLException e) {
             e.printStackTrace();
         }
+
+
 
         try{
             // Insert into Bill_Item table
@@ -182,6 +260,17 @@ public class Bill {
             String updatestockquary = "UPDATE shelf_items SET current_qty = current_qty - ? WHERE item_id = ?";
             updateStockStmt = connection.prepareStatement(updatestockquary);
 
+
+            //update loyalty points
+            String updateloyaltyquary = "UPDATE loyalty SET total_points = total_points + ? WHERE loyalty_id = ?";
+            loyaltyStmt = connection.prepareStatement(updateloyaltyquary);
+
+            setLoyaltyPoints(getNetTotal() / 1000);
+
+            loyaltyStmt.setDouble(1, (getLoyaltyPoints()));
+            loyaltyStmt.setInt(2, loyalty_id);
+
+            System.out.println(loyalty_id);
 
             for (BillItem billItem : items) {
                 int itemId = billItem.item.getId();
@@ -201,6 +290,7 @@ public class Bill {
 
             billItemStmt.executeBatch();// Execute all inserts
             updateStockStmt.executeBatch();
+            loyaltyStmt.executeUpdate();
             return true;
 
         }
@@ -247,29 +337,41 @@ public class Bill {
 
 
     public void printBill(String employeeName) {
-        System.out.println("=====================================");
-        System.out.println("               BILL                  ");
-        System.out.println("=====================================");
+
+        System.out.println(netTotal);
+        System.out.println("==============================================================");
+        System.out.println("                            BILL                  ");
+        System.out.println("==============================================================");
 
         // Display the employee who billed the transaction
         System.out.printf("Billed By: %-20s%n", employeeName);
+        System.out.println("Date: " + BillDate());
+
+        System.out.println("------------------------------------------------------------");
+        System.out.printf("%-20s %-10s %-10s %-15s\n", "Item", "Price", "Quantity", "Total");
+        System.out.println("------------------------------------------------------------");
 
         // Print the items
         for (BillItem billItem : items) {
-            System.out.printf("Item: %-15s Quantity: %-5d Price: %.2f Total: %.2f%n",
+
+            System.out.printf("%-20s %-10d %-10.2f %-15.2f\n",
                     billItem.item.getName(),
                     billItem.quantity,
                     billItem.item.getPrice(),
                     billItem.item_price);
         }
 
+        System.out.println("------------------------------------------------------------");
         // Print the total amount
         double totalAmount = totalPrice;
-        System.out.printf("\nTotal Amount: %.2f%n", totalAmount);
-
+        System.out.printf("\nBill Total: %.2f%n", totalAmount);
+        System.out.println("Total Discount: " + getDiscount());
+        System.out.println("------------------------------------------------------------");
         // Print the cash tendered and change
+        System.out.println("Net Amount: " + getNetTotal());
         System.out.printf("Cash Tendered: %.2f%n", getCashTendered());
         System.out.printf("Change Given: %.2f%n", getChangeReturned());
+        System.out.println("Points Earned: " + getLoyaltyPoints());
 
         System.out.println("=====================================");
     }
