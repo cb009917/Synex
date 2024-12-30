@@ -70,7 +70,8 @@ public class Main {
              System.out.println("10. Reshelve");
              System.out.println("11. Reorder Report");
              System.out.println("12. Bill Report");
-             System.out.println("13. Exit");
+             System.out.println("13. Promotion Management");
+             System.out.println("14. Exit");
              System.out.print("Enter your choice: ");
              int choice = scanner.nextInt();
              scanner.nextLine();
@@ -106,7 +107,11 @@ public class Main {
 
                  case 12 : Main.BillReport();
                  break;
-                 case 13 : {
+
+                 case 13 : Main.promotionManagement(scanner);
+                 break;
+
+                 case 14 : {
                      System.out.println("Thank you for using the POS system. Goodbye!");
                      return;
                  }
@@ -209,6 +214,7 @@ public class Main {
         System.out.println("1. Add new item");
         System.out.println("2. Update existing item");
         System.out.println("3. Remove item");
+        System.out.println("4. Exit");
 
         int crud_choice = scanner.nextInt();
         scanner.nextLine();
@@ -220,6 +226,8 @@ public class Main {
                     break;
             case 3: Main.removeItem(scanner);
                     break;
+            case 4 :
+                return;
         }
     }
 
@@ -239,6 +247,8 @@ public class Main {
                 break;
             case 3: Main.removeCategory(scanner);
                 break;
+            case 4:
+                return;
         }
     }
 
@@ -247,6 +257,7 @@ public class Main {
         System.out.println("1. Add new stock");
         System.out.println("2. Update existing stock");
         System.out.println("3. Remove stock");
+        System.out.println("4. Exit");
 
         int crud_choice = scanner.nextInt();
         scanner.nextLine();
@@ -258,6 +269,28 @@ public class Main {
                 break;
             case 3: Main.removestock(scanner);
                 break;
+            case 4:
+                return;
+        }
+    }
+
+    public static void promotionManagement(Scanner scanner){
+        System.out.println("1. Add new promotion");
+        System.out.println("2. Update existing promotion");
+        System.out.println("3. Remove promotion");
+        System.out.println("4. Exit");
+        int crud_choice = scanner.nextInt();
+        scanner.nextLine();
+
+        switch (crud_choice){
+            case 1: Main.addNewPromotion(scanner);
+                break;
+//            case 2: Main.updatePromotion(scanner);
+//                break;
+            case 3: Main.removePromotion(scanner);
+                break;
+            case 4:
+                return;
         }
     }
 
@@ -859,6 +892,192 @@ public class Main {
         return -1; // Return -1 if category not found
     }
 
+    // PROMOTION CRUD
+
+    public static void addNewPromotion(Scanner scanner){
+
+        System.out.print("Enter Promotion Item: ");
+        String itemcode = scanner.nextLine();
+
+        System.out.print("Enter Discount Percentage: ");
+        int discountPercentage = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.println("Promotion start date (YYYY-MM-DD): ");
+        String promotionStartDate = scanner.nextLine();
+
+        System.out.print("Promotion end date (YYYY-MM-DD): ");
+        String promotionEndDate = scanner.next();
+
+        int item_id = getItemId(itemcode);
+
+        if (item_id == -1) {
+            System.out.println("Item not found. Please add the Item first.");
+            return;
+        }
+
+        try {
+            String addPromoQuary = "INSERT INTO discount (item_id,discount_percentage, start_date, end_date) VALUES (?, ?, ?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(addPromoQuary);
+
+            stmt.setInt(1, item_id);
+            stmt.setInt(2, discountPercentage);
+            stmt.setString(3, promotionStartDate);
+            stmt.setString(4, promotionEndDate);
+
+
+
+            int rowsInserted = stmt.executeUpdate();
+
+            if (rowsInserted > 0) {
+                System.out.println("Promotion added successfully!");
+            }
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public static void removePromotion(Scanner scanner) {
+        try {
+            System.out.println("Enter the Promotion ID to remove: ");
+            int promoId = scanner.nextInt();
+
+            // Check if item exists
+            String checkQuery = "SELECT * FROM discount WHERE discount_id = ?";
+            PreparedStatement checkStmt = connection.prepareStatement(checkQuery);
+            checkStmt.setInt(1, promoId);
+            ResultSet resultSet = checkStmt.executeQuery();
+
+            if (!resultSet.next()) {
+                System.out.println("Promotion not found.");
+                return;
+            }
+
+            // Confirm deletion
+            System.out.println("Are you sure you want to delete this promotion? (yes/no): ");
+            String confirmation = scanner.nextLine();
+            if (!confirmation.equalsIgnoreCase("yes")) {
+                System.out.println("Deletion cancelled.");
+                return;
+            }
+
+            // Delete item
+            String deleteQuery = "DELETE FROM discount WHERE discount_id = ?";
+            PreparedStatement deleteStmt = connection.prepareStatement(deleteQuery);
+            deleteStmt.setInt(1, promoId);
+
+            int rowsDeleted = deleteStmt.executeUpdate();
+
+            if (rowsDeleted > 0) {
+                System.out.println("Promotion removed successfully!");
+            } else {
+                System.out.println("Failed to remove the promotion.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
+        }
+    }
+
+    // needs changes, direct chat copy
+
+//    public static void updatePromotion(Scanner scanner){
+//
+//        System.out.println("Enter the Promotion ID to update: ");
+//        int promoId = scanner.nextInt();
+//
+//        try {
+//            String checkquery = "SELECT * FROM discount WHERE discount_id = ?";
+//            PreparedStatement checkStmt = connection.prepareStatement(checkquery);
+//            checkStmt.setInt(1, promoId);
+//            ResultSet resultSet = checkStmt.executeQuery();
+//
+//            if (!resultSet.next()) {
+//                System.out.println("Promotion not found.");
+//                return;
+//            }
+//
+//
+//            System.out.println("Promotion Details: Code = " + resultSet.getString("discount_id") +
+//                    ", Item = " + resultSet.getString("item_id") +
+//                    ", Discount Percentage= " + resultSet.getString("discount_percentage") +
+//                    ", Start Date = " + resultSet.getInt("start_date") +
+//                    ", End Date = " + resultSet.getDouble("end_date"));
+//
+//
+//            System.out.println("Enter new Item id (or press Enter to keep current): ");
+//            String itemIdInput = scanner.nextLine();
+//            Integer itemId = itemIdInput.isBlank() ? null : Integer.parseInt(itemIdInput);
+//
+//
+//            System.out.println("Enter new Promotion percentage (or press Enter to keep current): ");
+//            String discountPercentageInput = scanner.nextLine();
+//            double discountPercentage = discountPercentageInput.isBlank() ? null : Integer.parseInt(discountPercentageInput);
+//
+//
+//            System.out.println("Enter new start date (or press Enter to keep current): ");
+//            String startDate = scanner.nextLine();
+//
+//            System.out.println("Enter new end date (or press Enter to keep current): ");
+//            String endDate = scanner.nextLine();
+//
+//
+//            // Build the update query dynamically based on provided inputs
+//            String updateQuery = "UPDATE item SET ";
+//            boolean hasUpdate = false;
+//
+//
+//            if (!itemId.isBlank()) {
+//                updateQuery += "item_id = ?, ";
+//                hasUpdate = true;
+//            }
+//            if (!discountPercentage.isBlank()) {
+//                updateQuery += "discount_percentage = ?, ";
+//                hasUpdate = true;
+//            }
+//
+//            if (!startDate.isBlank()) {
+//                updateQuery += "start_date = ?, ";
+//                hasUpdate = true;
+//            }
+//
+//            if (!endDate.isBlank()) {
+//                updateQuery += "end_date = ?, ";
+//                hasUpdate = true;
+//            }
+//
+//            if (!hasUpdate) {
+//                System.out.println("No changes specified. Exiting update process.");
+//                return;
+//            }
+//
+//            // Remove trailing comma and add WHERE clause
+//            updateQuery = updateQuery.substring(0, updateQuery.length() - 2) + " WHERE code = ?";
+//
+//            PreparedStatement updateStmt = connection.prepareStatement(updateQuery);
+//
+//            int paramIndex = 1;
+//            if (!name.isBlank()) updateStmt.setString(paramIndex++, name);
+//            if (!shelfId.isBlank()) updateStmt.setString(paramIndex++, shelfId);
+//            if (!priceInput.isBlank()) updateStmt.setDouble(paramIndex++, Double.parseDouble(priceInput));
+//            if (!manufacturer.isBlank()) updateStmt.setString(paramIndex++, manufacturer);
+//            updateStmt.setString(paramIndex, code);
+//
+//            int rowsUpdated = updateStmt.executeUpdate();
+//
+//            if (rowsUpdated > 0) {
+//                System.out.println("Item updated successfully!");
+//            } else {
+//                System.out.println("Item update failed.");
+//            }
+//        } catch (SQLException e) {
+//            System.err.println("Database error: " + e.getMessage());
+//        }
+//
+//
+//
+//    }
 
     // Report generation
 

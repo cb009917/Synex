@@ -216,15 +216,17 @@ public class Bill {
          // Start transaction
 
             // Insert into Bill table
-            String billquary = "INSERT INTO Bill (Total, Transaction_type, date, change_returned,Cash_given) VALUES (?, ?,?, ?,?)";
+            String billquary = "INSERT INTO Bill (Total, Transaction_type, date, change_returned,Cash_given, Discount, loyalty_points_earned) VALUES (?, ?,?, ?,?,?,?)";
             billStmt = connection.prepareStatement(billquary, PreparedStatement.RETURN_GENERATED_KEYS);
 
 
-            billStmt.setDouble(1, this.totalPrice);
+            billStmt.setDouble(1, getNetTotal());
             billStmt.setString(2, this.transactionType);
             billStmt.setString(3, BillDate());
             billStmt.setDouble(4, this.ChangeReturned);
             billStmt.setDouble(5, this.CashTendered);
+            billStmt.setDouble(6, getDiscount());
+            billStmt.setDouble(7, getLoyaltyPoints());
 
 
             int rowsInserted = billStmt.executeUpdate();
