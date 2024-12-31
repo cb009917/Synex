@@ -356,10 +356,10 @@ public class Bill {
         // Print the items
         for (BillItem billItem : items) {
 
-            System.out.printf("%-20s %-10d %-10.2f %-15.2f\n",
+            System.out.printf("%-20s %-10.2f %-10d %-15.2f\n",
                     billItem.item.getName(),
-                    billItem.quantity,
                     billItem.item.getPrice(),
+                    billItem.quantity,
                     billItem.item_price);
         }
 
