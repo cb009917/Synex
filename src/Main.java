@@ -6,7 +6,7 @@ import java.util.Scanner;
 
 public class Main {
 
-    // can we define it here
+
     static Connection connection = Database.connect();
     static String employeeName;
     static int loyaltyNumber;
@@ -16,25 +16,30 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         mainMenu mainMenu = new mainMenu();
 
+        System.out.println("===========================================");
+        System.out.println("    Welcome to Synex Outlet Store!    ");
+        System.out.println("===========================================");
 
-        System.out.println("Welcome to the Synex POS System!");
-        System.out.print("Please enter your Employee ID : ");
 
-        int employeeId = scanner.nextInt();
+        while (true) {
 
-        // Retrieve the employee's name
-        employeeName = getEmployeeName.execute(employeeId);
+            System.out.print("Please enter your Employee ID: ");
+            int employeeId = scanner.nextInt();
 
-        if (employeeName != null) {
-            System.out.println("Access granted. Welcome, " + employeeName + " (Employee ID: " + employeeId + ")");
-            mainMenu.execute(scanner); // Pass employee ID to the main menu
-        } else {
-            System.out.println("Access denied. Invalid Employee ID.");
-            System.out.println("Please try again.");
+            // Retrieve the employee's name
+            employeeName = getEmployeeName.execute(employeeId);
+
+            if (employeeName != null) {
+                System.out.println("Access granted. Welcome, " + employeeName + " (Employee ID: " + employeeId + ")");
+                mainMenu.execute(scanner); // Pass employee ID to the main menu
+
+            } else {
+                System.out.println("Access denied. Invalid Employee ID.");
+                System.out.println("Please try again.");
+            }
 
         }
 
-        scanner.close();
 
     }
 

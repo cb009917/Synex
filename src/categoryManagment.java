@@ -19,7 +19,8 @@ public class categoryManagment {
         System.out.println("1. Add new category");
         System.out.println("2. Update existing category");
         System.out.println("3. Remove category");
-        System.out.println("4. Exit");
+        System.out.println("4. View all categories");
+        System.out.println("5. Exit");
 
         int crud_choice = scanner.nextInt();
         scanner.nextLine();
@@ -31,37 +32,54 @@ public class categoryManagment {
                 break;
             case 3: removeCategory();
                 break;
-            case 4:
+            case 4: readCategory();
+                break;
+            case 5:
                 return;
         }
     }
 
-    public static void addCategory(){
+    public static void addCategory() {
         System.out.println("Enter category name:");
         String category_name = scanner.nextLine();
 
         System.out.println("Enter description: ");
-        String category_decs = scanner.nextLine();
+        String category_desc = scanner.nextLine();
 
-
+        // Check if the category already exists
         try {
-            String addCategoryQuary = "INSERT INTO item_category (Name, Description) VALUES (?, ?)";
-            PreparedStatement stmt = connection.prepareStatement(addCategoryQuary);
+            String checkCategoryQuery = "SELECT COUNT(*) FROM item_category WHERE Name = ?";
+            PreparedStatement checkStmt = connection.prepareStatement(checkCategoryQuery);
+            checkStmt.setString(1, category_name);
+            ResultSet resultSet = checkStmt.executeQuery();
+
+            if (resultSet.next() && resultSet.getInt(1) > 0) {
+                System.out.println("Category already exists. Please enter a different category name.");
+                return; // Exit the method
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking category: " + e.getMessage());
+            return;
+        }
+
+        // Insert the new category
+        try {
+            String addCategoryQuery = "INSERT INTO item_category (Name, Description) VALUES (?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(addCategoryQuery);
 
             stmt.setString(1, category_name);
-            stmt.setString(2, category_decs);
+            stmt.setString(2, category_desc);
 
             int rowsInserted = stmt.executeUpdate();
 
             if (rowsInserted > 0) {
-                System.out.println("Item added successfully!");
+                System.out.println("Category added successfully!");
             }
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
         }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-
     }
+
 
     public static void removeCategory(){
 
@@ -178,5 +196,30 @@ public class categoryManagment {
         } catch (SQLException e) {
             System.err.println("Database error: " + e.getMessage());
         }
+    }
+
+    public static void readCategory() {
+
+        String viewStockSql = "SELECT * FROM item_category";
+
+        try (PreparedStatement stmt = connection.prepareStatement(viewStockSql);
+             ResultSet resultSet = stmt.executeQuery()) {
+
+            System.out.println("-----------------------------------------------------------");
+            System.out.printf("%-12s %-20s %-20s\n", "Stock ID", "Name", "Description");
+            System.out.println("-----------------------------------------------------------");
+
+            while (resultSet.next()) {
+                int category_id = resultSet.getInt("Category_id");
+                String name = resultSet.getString("Name");
+                String description = resultSet.getString("Description");
+
+                System.out.printf("%-12d %-15s %-20s\n", category_id, name, description);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error reading stock data: " + e.getMessage());
+        }
+
     }
 }

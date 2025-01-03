@@ -40,13 +40,29 @@ public class StockManagement {
         }
     }
 
-    public static void addNewStock(){
+    public static void addNewStock() {
 
         System.out.print("Enter Item Code: ");
         String itemcode = scanner.nextLine();
 
         System.out.print("Enter Batch Number: ");
         String batchNumber = scanner.nextLine();
+
+        // Check if the batch number already exists
+        try {
+            String checkBatchQuery = "SELECT COUNT(*) FROM stock WHERE Batch_number = ?";
+            PreparedStatement checkBatchStmt = connection.prepareStatement(checkBatchQuery);
+            checkBatchStmt.setString(1, batchNumber);
+            ResultSet resultSet = checkBatchStmt.executeQuery();
+
+            if (resultSet.next() && resultSet.getInt(1) > 0) {
+                System.out.println("Batch number already exists. Please use a different batch number.");
+                addNewStock();
+            }
+        } catch (SQLException e) {
+            System.err.println("Error checking batch number: " + e.getMessage());
+            return;
+        }
 
         System.out.println("Quantity type (Units / KG): ");
         String quantity_type = scanner.nextLine();
@@ -68,9 +84,7 @@ public class StockManagement {
         scanner.nextLine();
         String supplier = scanner.nextLine();
 
-
         getItemId getItemId = new getItemId();
-
         int item_id = getItemId.execute(itemcode);
 
         if (item_id == -1) {
@@ -79,15 +93,18 @@ public class StockManagement {
         }
 
         try {
-            String addstockQuary = "INSERT INTO stock (Batch_number, item_id, qty, qty_type, batch_price, date_of_purchase, expiry_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            PreparedStatement stmt = connection.prepareStatement(addstockQuary);
+            String addStockQuery = """
+                INSERT INTO stock (Batch_number, item_id, qty, qty_type, batch_price, date_of_purchase, expiry_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """;
+            PreparedStatement stmt = connection.prepareStatement(addStockQuery);
 
-            String adjestItemQuary =  """
-                        UPDATE item 
-                        SET Stock_level = Stock_level + ? 
-                        WHERE item_id = ?
-                       """;
-            PreparedStatement Itemstmt = connection.prepareStatement(adjestItemQuary);
+            String adjustItemQuery = """
+                UPDATE item 
+                SET Stock_level = Stock_level + ? 
+                WHERE item_id = ?
+                """;
+            PreparedStatement itemStmt = connection.prepareStatement(adjustItemQuery);
 
             stmt.setString(1, batchNumber);
             stmt.setInt(2, item_id);
@@ -97,20 +114,20 @@ public class StockManagement {
             stmt.setString(6, date_of_purchase);
             stmt.setString(7, expirationDate);
 
-            Itemstmt.setInt(1, quantity);
-            Itemstmt.setInt(2, item_id);
+            itemStmt.setInt(1, quantity);
+            itemStmt.setInt(2, item_id);
 
-            Itemstmt.executeUpdate();
+            itemStmt.executeUpdate();
             int rowsInserted = stmt.executeUpdate();
 
             if (rowsInserted > 0) {
-                System.out.println("Item added successfully!");
+                System.out.println("Stock added successfully!");
             }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            System.err.println("Database error: " + e.getMessage());
         }
     }
+
 
     public static void updateStock(){
         System.out.println("Enter batch number: ");

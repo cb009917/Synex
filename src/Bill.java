@@ -183,7 +183,7 @@ public class Bill {
                 // Calculate discounted price
                 double originalPrice = billItem.item_price;
                 double discountAmount = originalPrice * (discountPercentage / 100);
-                totalDiscount += discountAmount * billItem.quantity;
+                totalDiscount += discountAmount;
                 setDiscount(totalDiscount);
 
 //                billItem.item_price = discountedPrice; // Update the price with the discount
@@ -249,7 +249,6 @@ public class Bill {
         catch (SQLException e) {
             e.printStackTrace();
         }
-
 
 
         try{
@@ -376,6 +375,9 @@ public class Bill {
         System.out.println("Points Earned: " + getLoyaltyPoints());
 
         System.out.println("=====================================");
+
+        resetOrder();
+
     }
 
 
@@ -390,6 +392,16 @@ public class Bill {
             this.item_price = item_price;
         }
 
+    }
+
+    private void resetOrder() {
+        items.clear();
+        setTotalPrice(0);
+        setDiscount(0);
+        setCashTendered(0);
+        setChangeReturned(0);
+        setLoyaltyPoints(0);
+        setNetTotal(0);
     }
 
 

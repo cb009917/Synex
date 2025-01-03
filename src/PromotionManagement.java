@@ -16,7 +16,8 @@ public class PromotionManagement {
         System.out.println("1. Add new promotion");
         System.out.println("2. Update existing promotion");
         System.out.println("3. Remove promotion");
-        System.out.println("4. Exit");
+        System.out.println("4. View all promotions");
+        System.out.println("5. Exit");
         int crud_choice = scanner.nextInt();
         scanner.nextLine();
 
@@ -27,7 +28,9 @@ public class PromotionManagement {
 //                break;
             case 3: removeItem();
                 break;
-            case 4:
+            case 4: readPromotion();
+                break;
+            case 5:
                 return;
         }
     }
@@ -118,6 +121,33 @@ public class PromotionManagement {
         } catch (SQLException e) {
             System.err.println("Database error: " + e.getMessage());
         }
+    }
+
+    public static void readPromotion() {
+
+        String viewStockSql = "SELECT * FROM discount";
+
+        try (PreparedStatement stmt = connection.prepareStatement(viewStockSql);
+             ResultSet resultSet = stmt.executeQuery()) {
+
+            System.out.println("-----------------------------------------------------------");
+            System.out.printf("%-15s %-10s %-25s %-15s %-15s\n", "Discount ID", "Item ID", "Discount Percentage", "Start Date", "End Date");
+            System.out.println("-----------------------------------------------------------");
+
+            while (resultSet.next()) {
+                int discount_id = resultSet.getInt("discount_id");
+                int item_id = resultSet.getInt("item_id");
+                int discount_percentage = resultSet.getInt("discount_percentage");
+                String startDate = resultSet.getString("start_date");
+                String endDate = resultSet.getString("end_date");
+
+                System.out.printf("%-15d %-10d %-25d %-15s %-15s\n", discount_id, item_id, discount_percentage, startDate, endDate);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error reading Promotion data: " + e.getMessage());
+        }
+
     }
 
 }

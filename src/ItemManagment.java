@@ -17,7 +17,8 @@ public class ItemManagment {
         System.out.println("1. Add new item");
         System.out.println("2. Update existing item");
         System.out.println("3. Remove item");
-        System.out.println("4. Exit");
+        System.out.println("4. View all items");
+        System.out.println("5. Exit");
 
         int crud_choice = scanner.nextInt();
         scanner.nextLine();
@@ -29,15 +30,28 @@ public class ItemManagment {
                     break;
             case 3: removeItem();
                     break;
-            case 4 :
+            case 4: readItem();
+                    break;
+            case 5 :
                 return;
         }
     }
 
-    public static void addNewItem(){
-        try{
+    public static void addNewItem() {
+        try {
             System.out.println("Enter item code: ");
             String code = scanner.nextLine();
+
+            // Check if the item already exists
+            String checkItemQuery = "SELECT COUNT(*) FROM item WHERE code = ?";
+            PreparedStatement checkStmt = connection.prepareStatement(checkItemQuery);
+            checkStmt.setString(1, code);
+            ResultSet resultSet = checkStmt.executeQuery();
+
+            if (resultSet.next() && resultSet.getInt(1) > 0) {
+                System.out.println("An item with this code already exists. Please use a different code.");
+                addNewItem();
+            }
 
             System.out.println("Enter item name: ");
             String name = scanner.nextLine();
@@ -48,7 +62,6 @@ public class ItemManagment {
             System.out.println("Enter category name: ");
             String categoryName = scanner.nextLine();
 
-
             System.out.println("Enter price: ");
             double price = scanner.nextDouble();
             scanner.nextLine();
@@ -56,18 +69,16 @@ public class ItemManagment {
             System.out.println("Enter manufacturer: ");
             String manufacturer = scanner.nextLine();
 
-
             int categoryId = getCategoryId.execute(categoryName);
-
 
             if (categoryId == -1) {
                 System.out.println("Category not found. Please add the category first.");
-
+                return; // Exit the method
             }
 
-            // Step 2: Insert the new item into the item table
-            String additemquary = "INSERT INTO item (code, shelf_id, category_id, name, price, manufacturer) VALUES (?, ?, ?, ?, ?, ?)";
-            PreparedStatement stmt = connection.prepareStatement(additemquary);
+            // Insert the new item into the item table
+            String addItemQuery = "INSERT INTO item (code, shelf_id, category_id, name, price, manufacturer) VALUES (?, ?, ?, ?, ?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(addItemQuery);
 
             stmt.setString(1, code);
             stmt.setString(2, shelfId);
@@ -82,10 +93,11 @@ public class ItemManagment {
                 System.out.println("Item added successfully!");
             }
 
-        } catch ( SQLException e) {
+        } catch (SQLException e) {
             System.err.println("Database error: " + e.getMessage());
         }
     }
+
 
     public static void removeItem() {
         try {
@@ -136,6 +148,7 @@ public class ItemManagment {
 
         Scanner scanner = new Scanner(System.in);
         Connection connection = Database.connect();
+        int categoryId = 0;
 
         System.out.println("Enter item code: ");
         String code = scanner.nextLine();
@@ -169,6 +182,9 @@ public class ItemManagment {
             System.out.println("Enter new price (or press Enter to keep current): ");
             String priceInput = scanner.nextLine();
 
+            System.out.println("Enter new category (or press Enter to keep current): ");
+            String category = scanner.nextLine();
+
             System.out.println("Enter new manufacturer (or press Enter to keep current): ");
             String manufacturer = scanner.nextLine();
 
@@ -180,6 +196,13 @@ public class ItemManagment {
                 updateQuery += "name = ?, ";
                 hasUpdate = true;
             }
+
+            if (!category.isBlank()) {
+                categoryId = getCategoryId.execute(category);
+                updateQuery += "category_id = ?, ";
+                hasUpdate = true;
+            }
+
             if (!shelfId.isBlank()) {
                 updateQuery += "shelf_id = ?, ";
                 hasUpdate = true;
@@ -208,6 +231,7 @@ public class ItemManagment {
             if (!shelfId.isBlank()) updateStmt.setString(paramIndex++, shelfId);
             if (!priceInput.isBlank()) updateStmt.setDouble(paramIndex++, Double.parseDouble(priceInput));
             if (!manufacturer.isBlank()) updateStmt.setString(paramIndex++, manufacturer);
+            if (!category.isBlank()) updateStmt.setInt(paramIndex++, categoryId);
             updateStmt.setString(paramIndex, code);
 
             int rowsUpdated = updateStmt.executeUpdate();
@@ -220,6 +244,39 @@ public class ItemManagment {
         } catch (SQLException e) {
             System.err.println("Database error: " + e.getMessage());
         }
+    }
+
+
+    public static void readItem() {
+
+        String viewStockSql = "SELECT * FROM item";
+
+        try (PreparedStatement stmt = connection.prepareStatement(viewStockSql);
+             ResultSet resultSet = stmt.executeQuery()) {
+
+            System.out.println("----------------------------------------------------------------------------------------------------------------------------------------------------------------");
+            System.out.printf("%-10s %-10s %-15s %-15s %-25s %-20s %-20s %-10s\n", "Item ID", "Code", "Shelf_id", "Category_id", "Name", "Price", "Manufacturer", "Stock_level");
+            System.out.println("----------------------------------------------------------------------------------------------------------------------------------------------------------------");
+
+            while (resultSet.next()) {
+                int itemId = resultSet.getInt("item_id");
+                String code = resultSet.getString("Code");
+                int shelfId = resultSet.getInt("Shelf_id");
+                int categoryId = resultSet.getInt("Category_id");
+                String name = resultSet.getString("Name");
+                int price = resultSet.getInt("Price");
+                String manufacturer = resultSet.getString("Manufacturer");
+                int stockLevel = resultSet.getInt("Stock_level");
+
+
+
+                System.out.printf("%-10d %-10s %-20d %-10d %-25s %-20d %-20s %-10d\n", itemId, code, shelfId, categoryId, name, price, manufacturer, stockLevel);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error reading Item data: " + e.getMessage());
+        }
+
     }
 
 }

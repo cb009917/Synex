@@ -76,6 +76,7 @@ public class BillCustomer {
             loyalty();
         }
         else {
+
             System.out.println("Loyalty points redeemed.");
         }
     }

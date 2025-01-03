@@ -15,6 +15,7 @@ public class mainMenu {
         PromotionManagement promotionManagement = new PromotionManagement();
         StockManagement stockManagement = new StockManagement();
         ItemManagment itemManagment = new ItemManagment();
+        Reshelf reshelf = new Reshelf();
 
 
 
@@ -52,8 +53,8 @@ public class mainMenu {
                 case 6 : stockReport.execute();
                     break;
 
-                case 7 : //restockReport.execute();
-                    break;
+//                case 7 : restockReport.execute();
+//                    break;
 
                 case 8 : reshelveReport.execute();
                     break;
@@ -61,7 +62,7 @@ public class mainMenu {
                 case 9 : stockManagement.execute(scanner);
                     break;
 
-                case 10 : reshelveReport.execute();
+                case 10 : reshelf.execute();
                     break;
 
                 case 11 : reorderReport.execute();
